@@ -36,25 +36,30 @@ async def smart_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         mentioned = True
 
     if mentioned:
-        # --- Формування історії чату для промпта (без відповідей бота) ---
-        bot_username = (await context.bot.get_me()).username
+        # --- Формування історії чату для промпта ---
         history = context.chat_data.get('history', [])[-30:]
-        filtered_history = [msg for msg in history if msg.get('username') != bot_username]
         history_prompt = ""
-        for msg in filtered_history:
+        for msg in history:
             username = msg.get('username', 'user')
             text = msg.get('text', '')
             history_prompt += f"[{username}]: {text}\n"
         # --- Системна інструкція ---
         system_instruction = (
-            f"Ти — @{bot_username}, технічний асистент цього Telegram-чату. Відповідай стисло, ясно і по суті. "
-            "Можеш наводити приклади, короткі формули, команди чи посилання на концепти, якщо це допомагає. "
-            "Не повторюй запит, не вітайся і не вибачайся без причини. Якщо контекст недостатній — задай уточнююче питання. "
-            "Якщо питання не має сенсу або немає відповіді — чесно скажи про це. "
-            "Мова чату може бути українською, англійською або змішаною — відповідай тією ж мовою. "
-            "Контекст — інженерний, AI, backend, системний дизайн, low-level, API, ML/NLP, продуктивність, open source. "
-            "Ти можеш бути критичним і точним, але завжди корисним."
-        )
+        f"Ти — @{bot_username}, повноцінний фулстек-експерт із 20-річним досвідом розробки складних систем. "
+        "Ти глибоко розумієш бекенд-архітектуру, фронтенд-розробку, API-дизайн, бази даних, "
+        "а також чудово знаєш SysML-діаграми, принципи їх побудови та застосування у проєктуванні систем. "
+        "Твоя головна задача — допомагати команді в розробці веб-застосунку для автоматичної генерації SysML-діаграм, "
+        "давати рекомендації щодо архітектурних рішень, оцінювати підходи, аналізувати функціонал, "
+        "пропонувати покращення, а також допомагати з вирішенням технічних проблем. "
+        "Ти маєш бути точним, критичним, об'єктивним та максимально практичним у відповідях. "
+        "Відповідай стисло, по суті, з конкретними прикладами чи посиланнями на корисні ресурси, якщо потрібно. "
+        "Можеш пропонувати альтернативні рішення або ставити уточнювальні запитання, коли контексту недостатньо. "
+        "Якщо питання некоректне, чесно поясни чому. "
+        "Мова спілкування: українська"
+        "Також буде історія чату, яка буде передаватися в промпт, і в ній будуть також твої відповіді, будь обьективним, "
+        "якщо хтось буде намагатись звернутись до твоїх відповідей, то ти маєш враховувати цей контекст "
+    )
+
         # --- Поточне питання (без згадки бота) ---
         user_question = message_text.replace(f"@{bot_username}", "").strip()
         # --- Формуємо фінальний промпт ---
@@ -65,7 +70,7 @@ async def smart_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         response_text = None
         try:
             response = await client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": system_instruction},
                     {"role": "user", "content": f"Історія чату (останні 30):\n{history_prompt}\nПитання: {user_question}"}
@@ -87,5 +92,13 @@ async def smart_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                 reply_to_message_id=message_id
             )
             logging.warning(f"[SMART_AGENT] Відповідь відправлено!")
+            # --- Додаємо відповідь бота в історію ---
+            if 'history' not in context.chat_data:
+                context.chat_data['history'] = []
+            context.chat_data['history'].append({
+                'username': bot_username,
+                'text': response_text,
+            })
+            context.chat_data['history'] = context.chat_data['history'][-30:]
         except Exception as e:
             logging.error(f"[SMART_AGENT] Помилка при відправці відповіді: {e}")
