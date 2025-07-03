@@ -51,3 +51,6 @@ EMOJIS = {
     'warning': '⚠️',
     'info': 'ℹ️',
 }
+
+# OpenAI API Key
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
