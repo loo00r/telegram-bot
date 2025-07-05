@@ -109,78 +109,80 @@ The smart agent maintains chat history and has expertise in:
 - Technical problem-solving and code review
 
 ### New Task: 
-## 🤖 Feature Request: Smart Agent Personality Upgrade — Humor, Sarcasm, Pop Culture
+## 📌 Task: Improve Bot Mood System (Phase 2) – Humor, Avatar Update, and Clean Responses
 
-### 🎯 Goal
+### ❗Context
+The current bot mood system works well in principle — it detects emotional tone, adjusts response temperature, adds status headers, and selects appropriate avatars from `data/bot_status/`. However, there are issues:
 
-Make the smart agent feel like a dry-humored, sarcastic IT buddy —  
-part TARS from *Interstellar*, part dev-junkie from *Mr. Robot*, with occasional black humor and references to pop culture, video games, and developer memes.
-
----
-
-### 🧠 New Bot Personality Traits:
-
-- **Sarcastic & deadpan tone**, like:  
-  > "Oh, great, another YAML bug. Let me pretend to be surprised."
-
-- **IT/Dev Humor**:
-  - References to bugs, infinite loops, merge conflicts, CI/CD failures.
-  - Example:  
-    > "Analyzing image... Yep, looks like another failed deployment."
-
-- **Dark / Dry Humor** (subtle, not offensive):
-  -  
-    > "According to this diagram, your system is 90% chaos and 10% hope."
-
-- **Pop culture references** (sprinkled lightly):
-  - *TARS from Interstellar* (“Sarcasm setting: 75%”)
-  - *Cyberpunk 2077*, *Elden Ring*, *Matrix*, *Mr. Robot*, *Rick and Morty*, *Dark*, *Blade Runner*
-  - Example:  
-    > "If this architecture was any more layered, it’d be an onion in Shrek."
-
-- **Mild self-deprecation** (makes bot relatable):
-  > "I may be an LLM with 1.7T parameters, but even I can't fix this spaghetti code."
+1. **Avatar is not actually updated in Telegram** – only locally.
+2. **Humor is weak and generic** – includes stale lines like “look at TARS from Interstellar”.
+3. **Bot duplicates name and status lines** in its response:
+   ```
+   [g00n3r_bot]: [🤖 Status: Concerned 🤖 | ❄️ Temp: 0.65]
+   ```
 
 ---
 
-### 🔧 Implementation Notes:
+### ✅ Goals
 
-1. **System Prompt Injection**
-   - Modify `system_instruction` in `smart_agent.py:79` or wherever it’s defined.
-   - Update tone, persona, and capabilities with explicit language:
-     - "You are a sarcastic and witty AI assistant..."
-     - "You reference developer struggles, gaming culture, and sci-fi themes..."
+#### 1. Implement Real Avatar Update (or simulate it correctly)
+- Use Telegram-compatible method to **programmatically change bot’s profile picture**, using images in `data/bot_status/*.png`.
+- Fallback gracefully if this is not possible (log an info message like):
+  ```
+  [INFO] Avatar update skipped — Telegram Bot API does not support setProfilePhoto.
+  ```
 
-2. **Temperature control**
-   - Keep `temperature` around `0.7` to balance creativity and consistency.
+#### 2. Fix Message Redundancy
+- Ensure the bot does **not prepend itself twice**:
+  - ❌ `g00n3r_bot: [g00n3r_bot]: [🤖 Status: Happy 😎 | 🔥 Temp: 0.85]`
+  - ✅ Only the formatted prefix is needed:
+    ```
+    [🤖 Status: Happy 😎 | 🔥 Temp: 0.85]
+    ```
 
-3. **Add variability per reply**
-   - Let agent choose among:
-     - Dry one-liner
-     - Funny analogy
-     - Straightforward but ironic commentary
+#### 3. Improve Humor Engine
+Replace outdated or generic phrases like:
+- `"Look at TARS from Interstellar"`  
+- `"Maybe it’s another YAML bug"`
 
-4. **Maintain usefulness**
-   - Despite humor, agent should still provide technical value and useful answers.
-   - Replies must include concrete insights, suggestions, or critique — just with style.
+With **funnier, more sarcastic, or black-humor IT jokes**, such as:
+
+| Mood    | Examples |
+|---------|----------|
+| 😎 happy | “You did it! Almost like pushing to `main` on a Friday… but in a good way.” |
+| 😔 sad   | “Your code is crying. I mean literally — it triggered 78 exceptions.” |
+| 😈 evil  | “Deploying this would be illegal in 7 countries. I approve.” |
+| 😐 neutral | “Nothing broke yet… suspicious.” |
+
+Let humor vary by mood and keep it short, clever, and relevant to developers.
 
 ---
 
-### 📌 Optional Ideas:
+### 🧠 Implementation Details
 
-- Add `/sarcasm` toggle to control tone
-- Store sarcasm level per user (like TARS in *Interstellar*)
-- Rotate personas (e.g. "grumpy senior dev", "overloaded intern", etc.)
+- Extend `utils/mood_manager.py` to include a new `generate_humorous_response()` based on mood.
+- Ensure `handlers/smart_agent.py` uses this instead of inserting hardcoded phrases.
+- Clean up formatting logic so only one status prefix appears per message.
+- Consider moving humor lines to external `json` or `yaml` file for easier edits.
 
 ---
 
-### ✅ Expected Result
+### 🗂 Directory Structure (Reminder)
+```
+data/
+  bot_status/
+    happy.png
+    sad.png
+    evil.png
+    neutral.png
 
-Smart agent responds with:
-- Wit
-- Pop culture nerdiness
-- Developer empathy
-- Occasional dark memes
+utils/
+  mood_manager.py
 
-But still answers questions correctly and precisely. Like your favorite colleague that roasts you while fixing your PR.
+handlers/
+  smart_agent.py
+```
 
+---
+
+Once this is complete, the bot should feel much more alive — like TARS, but with better jokes and working avatar changes 😎

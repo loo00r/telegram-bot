@@ -13,8 +13,12 @@ from telegram.constants import MessageEntityType
 from openai import AsyncOpenAI
 from config import OPENAI_API_KEY
 from .history_logger import add_image_message_to_history
+from utils.mood_manager import MoodManager
 
 client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+
+# Global mood manager instance
+mood_manager = MoodManager()
 
 # Глобальний буфер для групування медіафайлів
 media_group_buffer: Dict[str, Dict] = {}
@@ -149,6 +153,10 @@ async def smart_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         prompt = f"{system_instruction}\n\nІсторія чату (останні 30):\n{history_prompt}\nПитання: {user_question}\nВідповідь:"
         logging.warning(f"[SMART_AGENT] Згенерований промпт для OpenAI:\n{prompt}")
 
+        # --- Mood detection and avatar update ---
+        current_mood, temperature, mood_emoji = await mood_manager.update_mood(user_question, use_ai=True)
+        await mood_manager.set_avatar(context, current_mood)
+        
         # --- Відправка запиту до OpenAI ---
         response_text = None
         try:
@@ -177,7 +185,7 @@ async def smart_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                         {"role": "system", "content": system_instruction},
                         {"role": "user", "content": content}
                     ],
-                    temperature=0.7,
+                    temperature=temperature,
                     max_tokens=512,
                 )
                 logging.warning(f"[SMART_AGENT] Використано GPT-4o з {len(images_to_include)} зображеннями")
@@ -189,7 +197,7 @@ async def smart_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                         {"role": "system", "content": system_instruction},
                         {"role": "user", "content": user_content}
                     ],
-                    temperature=0.7,
+                    temperature=temperature,
                     max_tokens=512,
                 )
                 logging.warning(f"[SMART_AGENT] Використано GPT-4o-mini для тексту")
@@ -202,9 +210,13 @@ async def smart_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
 
         # --- Відправляємо відповідь у чат ---
         try:
+            # Add mood status prefix to response
+            status_prefix = mood_manager.get_status_prefix(current_mood, temperature)
+            final_response = f"{status_prefix}\n{response_text}"
+            
             await context.bot.send_message(
                 chat_id=chat_id,
-                text=response_text,
+                text=final_response,
                 reply_to_message_id=message_id
             )
             logging.warning(f"[SMART_AGENT] Відповідь відправлено!")
@@ -215,7 +227,7 @@ async def smart_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                 'type': 'text_message',
                 'user_id': None,
                 'username': bot_username,
-                'text': response_text,
+                'text': final_response,
                 'message_id': None,
                 'timestamp': None
             })
@@ -319,6 +331,11 @@ async def process_grouped_images(media_group_id: str, context: ContextTypes.DEFA
                 }
             })
         
+        # Detect mood from caption and context
+        mood_text = caption or "зображення"
+        current_mood, temperature, mood_emoji = await mood_manager.update_mood(mood_text, use_ai=True)
+        await mood_manager.set_avatar(context, current_mood)
+        
         # Відправляємо запит до GPT-4o
         response = await client.chat.completions.create(
             model="gpt-4o",
@@ -326,17 +343,21 @@ async def process_grouped_images(media_group_id: str, context: ContextTypes.DEFA
                 {"role": "system", "content": system_instruction},
                 {"role": "user", "content": content}
             ],
-            temperature=0.7,
+            temperature=temperature,
             max_tokens=512,
         )
         
         response_text = response.choices[0].message.content.strip()
         logging.warning(f"[PHOTO_HANDLER] Відповідь GPT-4o для групи {media_group_id}: {response_text}")
         
+        # Add mood status prefix to response
+        status_prefix = mood_manager.get_status_prefix(current_mood, temperature)
+        final_response = f"{status_prefix}\n{response_text}"
+        
         # Відправляємо відповідь у чат
         await context.bot.send_message(
             chat_id=chat_id,
-            text=response_text,
+            text=final_response,
             reply_to_message_id=first_message_id
         )
         
@@ -347,7 +368,7 @@ async def process_grouped_images(media_group_id: str, context: ContextTypes.DEFA
             'type': 'text_message',
             'user_id': None,
             'username': bot_username,
-            'text': response_text,
+            'text': final_response,
             'message_id': None,
             'timestamp': None
         })
@@ -523,6 +544,11 @@ async def process_single_image(image_base64: str, caption: str, chat_id: int, me
             prompt_text += f"Підпис до зображення: {caption}\n"
         prompt_text += "Проаналізуй зображення з урахуванням контексту повідомлень та дай відповідь."
         
+        # Detect mood from caption and context
+        mood_text = caption or "зображення"
+        current_mood, temperature, mood_emoji = await mood_manager.update_mood(mood_text, use_ai=True)
+        await mood_manager.set_avatar(context, current_mood)
+        
         # Відправляємо запит до GPT-4o з зображенням
         response = await client.chat.completions.create(
             model="gpt-4o",
@@ -541,17 +567,21 @@ async def process_single_image(image_base64: str, caption: str, chat_id: int, me
                     ]
                 }
             ],
-            temperature=0.7,
+            temperature=temperature,
             max_tokens=512,
         )
         
         response_text = response.choices[0].message.content.strip()
         logging.warning(f"[PHOTO_HANDLER] Відповідь GPT-4o: {response_text}")
         
+        # Add mood status prefix to response
+        status_prefix = mood_manager.get_status_prefix(current_mood, temperature)
+        final_response = f"{status_prefix}\n{response_text}"
+        
         # Відправляємо відповідь у чат
         await context.bot.send_message(
             chat_id=chat_id,
-            text=response_text,
+            text=final_response,
             reply_to_message_id=message_id
         )
         
@@ -562,7 +592,7 @@ async def process_single_image(image_base64: str, caption: str, chat_id: int, me
             'type': 'text_message',
             'user_id': None,
             'username': bot_username,
-            'text': response_text,
+            'text': final_response,
             'message_id': None,
             'timestamp': None
         })
