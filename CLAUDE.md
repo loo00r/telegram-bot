@@ -109,61 +109,78 @@ The smart agent maintains chat history and has expertise in:
 - Technical problem-solving and code review
 
 ### New Task: 
-## 🐞 Bugfix: Smart Agent Does Not React to Nearby Photo When Mentioned Separately
+## 🤖 Feature Request: Smart Agent Personality Upgrade — Humor, Sarcasm, Pop Culture
 
-### 🔎 Problem Summary
+### 🎯 Goal
 
-The bot fails to analyze images that were just sent, even when it is directly mentioned immediately after. Instead, it only considers the message with the mention and ignores the nearby image, despite being part of the same user intent.
-
----
-
-### 🧩 Case Example (from log + screenshot):
-
-User sends:
-1. A photo (e.g., face with name)
-2. Message: `хто це`
-3. Message: `@g00n3r_bot прокоментуй`
-
-Bot responds with an introductory message and ignores the image.  
-`GPT-4o-mini` is used instead of `GPT-4o`, which confirms no image was passed into the prompt.
+Make the smart agent feel like a dry-humored, sarcastic IT buddy —  
+part TARS from *Interstellar*, part dev-junkie from *Mr. Robot*, with occasional black humor and references to pop culture, video games, and developer memes.
 
 ---
 
-### 📌 Issue Observed in Logs:
+### 🧠 New Bot Personality Traits:
 
-- At `13:15:39`, `PHOTO_HANDLER` logs a received image with `media_group_id=None`, 
-  but skips it because the bot is not mentioned **in that message**.
-- At `13:15:56`, `SMART_AGENT` handles `@mention`, but **does not associate it with the photo** from the same user.
-- The photo is ignored, despite the clear user intent to refer to it.
+- **Sarcastic & deadpan tone**, like:  
+  > "Oh, great, another YAML bug. Let me pretend to be surprised."
 
----
+- **IT/Dev Humor**:
+  - References to bugs, infinite loops, merge conflicts, CI/CD failures.
+  - Example:  
+    > "Analyzing image... Yep, looks like another failed deployment."
 
-### ✅ Fix Requirements
+- **Dark / Dry Humor** (subtle, not offensive):
+  -  
+    > "According to this diagram, your system is 90% chaos and 10% hope."
 
-1. **Improve image-to-mention association**
-   - When a message contains `@bot`, scan recent `image_message`s sent by the **same user** within the last ~30 seconds (or last 3 messages).
-   - If found, attach those images to the GPT-4o prompt.
+- **Pop culture references** (sprinkled lightly):
+  - *TARS from Interstellar* (“Sarcasm setting: 75%”)
+  - *Cyberpunk 2077*, *Elden Ring*, *Matrix*, *Mr. Robot*, *Rick and Morty*, *Dark*, *Blade Runner*
+  - Example:  
+    > "If this architecture was any more layered, it’d be an onion in Shrek."
 
-2. **Contextual mention handling**
-   - Treat `@mention` as referring to recent visual content in the chat history, even if not in the same message.
-   - Handle common interaction patterns:
-     - Image
-     - Question (e.g. "що це?")
-     - Bot mention (e.g. `@bot коментуй`)
-
-3. **Support for `media_group_id=None`**
-   - Even single-photo messages should be available for visual context, not ignored when not part of a group.
-
-4. **Pending media buffer (in-memory)**
-   - Temporarily keep track of recent images per user.
-   - If a mention arrives shortly after (within time or message window), link the buffered image(s) to the GPT prompt.
+- **Mild self-deprecation** (makes bot relatable):
+  > "I may be an LLM with 1.7T parameters, but even I can't fix this spaghetti code."
 
 ---
 
-### 🧠 Expected Behavior After Fix
+### 🔧 Implementation Notes:
 
-- Bot will react to recent images even if mentioned in a **subsequent message**.
-- Smart agent will switch to `GPT-4o` and include base64 images.
-- Prompts like `@bot прокоментуй` will respond **about the image**, not generically.
+1. **System Prompt Injection**
+   - Modify `system_instruction` in `smart_agent.py:79` or wherever it’s defined.
+   - Update tone, persona, and capabilities with explicit language:
+     - "You are a sarcastic and witty AI assistant..."
+     - "You reference developer struggles, gaming culture, and sci-fi themes..."
 
+2. **Temperature control**
+   - Keep `temperature` around `0.7` to balance creativity and consistency.
+
+3. **Add variability per reply**
+   - Let agent choose among:
+     - Dry one-liner
+     - Funny analogy
+     - Straightforward but ironic commentary
+
+4. **Maintain usefulness**
+   - Despite humor, agent should still provide technical value and useful answers.
+   - Replies must include concrete insights, suggestions, or critique — just with style.
+
+---
+
+### 📌 Optional Ideas:
+
+- Add `/sarcasm` toggle to control tone
+- Store sarcasm level per user (like TARS in *Interstellar*)
+- Rotate personas (e.g. "grumpy senior dev", "overloaded intern", etc.)
+
+---
+
+### ✅ Expected Result
+
+Smart agent responds with:
+- Wit
+- Pop culture nerdiness
+- Developer empathy
+- Occasional dark memes
+
+But still answers questions correctly and precisely. Like your favorite colleague that roasts you while fixing your PR.
 
