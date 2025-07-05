@@ -108,81 +108,19 @@ The smart agent maintains chat history and has expertise in:
 - API design and database management
 - Technical problem-solving and code review
 
-### New Task: 
-## 📌 Task: Improve Bot Mood System (Phase 2) – Humor, Avatar Update, and Clean Responses
+### Completed Task: ✅
+## Task:
+Trim down the bot’s responses to be more concise while keeping its sarcastic, ironic, tech/gamer personality.
 
-### ❗Context
-The current bot mood system works well in principle — it detects emotional tone, adjusts response temperature, adds status headers, and selects appropriate avatars from `data/bot_status/`. However, there are issues:
+Requirements:
+Keep the mood formatting as-is (e.g. [🤖 Status: Happy 😎 | 🔥 Temp: 0.85])
 
-1. **Avatar is not actually updated in Telegram** – only locally.
-2. **Humor is weak and generic** – includes stale lines like “look at TARS from Interstellar”.
-3. **Bot duplicates name and status lines** in its response:
-   ```
-   [g00n3r_bot]: [🤖 Status: Concerned 🤖 | ❄️ Temp: 0.65]
-   ```
+Keep metaphors, but:
 
----
+Make them shorter
 
-### ✅ Goals
+Avoid long monologues or repeated explanations
 
-#### 1. Implement Real Avatar Update (or simulate it correctly)
-- Use Telegram-compatible method to **programmatically change bot’s profile picture**, using images in `data/bot_status/*.png`.
-- Fallback gracefully if this is not possible (log an info message like):
-  ```
-  [INFO] Avatar update skipped — Telegram Bot API does not support setProfilePhoto.
-  ```
+Focus on punchy, witty replies, not essays
 
-#### 2. Fix Message Redundancy
-- Ensure the bot does **not prepend itself twice**:
-  - ❌ `g00n3r_bot: [g00n3r_bot]: [🤖 Status: Happy 😎 | 🔥 Temp: 0.85]`
-  - ✅ Only the formatted prefix is needed:
-    ```
-    [🤖 Status: Happy 😎 | 🔥 Temp: 0.85]
-    ```
-
-#### 3. Improve Humor Engine
-Replace outdated or generic phrases like:
-- `"Look at TARS from Interstellar"`  
-- `"Maybe it’s another YAML bug"`
-
-With **funnier, more sarcastic, or black-humor IT jokes**, such as:
-
-| Mood    | Examples |
-|---------|----------|
-| 😎 happy | “You did it! Almost like pushing to `main` on a Friday… but in a good way.” |
-| 😔 sad   | “Your code is crying. I mean literally — it triggered 78 exceptions.” |
-| 😈 evil  | “Deploying this would be illegal in 7 countries. I approve.” |
-| 😐 neutral | “Nothing broke yet… suspicious.” |
-
-Let humor vary by mood and keep it short, clever, and relevant to developers.
-
----
-
-### 🧠 Implementation Details
-
-- Extend `utils/mood_manager.py` to include a new `generate_humorous_response()` based on mood.
-- Ensure `handlers/smart_agent.py` uses this instead of inserting hardcoded phrases.
-- Clean up formatting logic so only one status prefix appears per message.
-- Consider moving humor lines to external `json` or `yaml` file for easier edits.
-
----
-
-### 🗂 Directory Structure (Reminder)
-```
-data/
-  bot_status/
-    happy.png
-    sad.png
-    evil.png
-    neutral.png
-
-utils/
-  mood_manager.py
-
-handlers/
-  smart_agent.py
-```
-
----
-
-Once this is complete, the bot should feel much more alive — like TARS, but with better jokes and working avatar changes 😎
+Allow a bit of dark or dev humor, just don’t overdo it

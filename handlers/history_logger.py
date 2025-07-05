@@ -88,9 +88,15 @@ def add_image_message_to_history(context: ContextTypes.DEFAULT_TYPE, images: Lis
     """
     Додає повідомлення з зображеннями до історії чату.
     Використовується smart_agent.py для додавання групових зображень.
+    ВАЖЛИВО: НЕ викликати для зображень від бота (user_id не повинен бути None)
     """
     if 'history' not in context.chat_data:
         context.chat_data['history'] = []
+    
+    # Захист: не зберігаємо зображення від бота
+    if user_id is None:
+        logging.warning(f"[HISTORY] Відхилено спробу зберегти зображення від бота в історію")
+        return
     
     history = context.chat_data['history']
     
