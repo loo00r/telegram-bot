@@ -15,7 +15,7 @@ from handlers.start import start
 from handlers.help import show_help
 from handlers.button_handler import button_handler
 from handlers.tasks import tasks  # Імпортуємо функцію tasks з модуля tasks
-from handlers.smart_agent import smart_agent_handler
+from handlers.smart_agent import smart_agent_handler, photo_handler
 from handlers.history_logger import history_logger
 
 # Налаштування логування
@@ -116,8 +116,11 @@ def main() -> None:
     # Додаємо handler для логування історії чату (всі текстові повідомлення)
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), history_logger), group=0)
 
+    # Додаємо handler для фотографій (обробляє фото з контекстом)
+    application.add_handler(MessageHandler(filters.PHOTO, photo_handler), group=1)
+
     # Додаємо handler смарт-агента (реагує на тег бота в тексті)
-    application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), smart_agent_handler), group=1)
+    application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), smart_agent_handler), group=2)
 
     # Додаємо ConversationHandler для завдань (має бути після звичайних обробників)
     application.add_handler(tasks_conv_handler)
