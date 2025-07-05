@@ -47,6 +47,7 @@ class MoodManager:
         self.current_avatar = None
         self.message_history = []
         self.avatar_cache = {}
+        self.humor_lines = self._init_humor_lines()
         
     def _analyze_keywords(self, text: str) -> Dict[str, int]:
         """Analyze text using keyword matching"""
@@ -162,34 +163,17 @@ class MoodManager:
         else:
             return "🧊"
     
-    async def set_avatar(self, context, mood: str) -> bool:
-        """Set bot avatar based on mood"""
-        try:
-            avatar_path = f"data/bot_status/{MOOD_CONFIG[mood]['avatar']}"
-            
-            # Check if avatar file exists
-            if not os.path.exists(avatar_path):
-                logging.error(f"[MOOD_MANAGER] Avatar file not found: {avatar_path}")
-                return False
-                
-            # Check if this avatar is already set to avoid redundant API calls
-            if self.current_avatar == mood:
-                logging.info(f"[MOOD_MANAGER] Avatar already set to {mood}, skipping")
-                return True
-                
-            # Note: Telegram Bot API doesn't support changing bot avatar programmatically
-            # The setUserProfilePhotos method is for user accounts, not bots
-            # This would require manual avatar changes or using a different approach
-            
-            logging.info(f"[MOOD_MANAGER] Avatar change requested for mood: {mood}")
-            logging.warning("[MOOD_MANAGER] Note: Telegram Bot API doesn't support programmatic avatar changes")
-            
-            self.current_avatar = mood
-            return True
-            
-        except Exception as e:
-            logging.error(f"[MOOD_MANAGER] Failed to set avatar: {e}")
-            return False
+    def get_mood_image_path(self, mood: str) -> str:
+        """Get path to mood image file"""
+        return f"data/bot_status/{MOOD_CONFIG[mood]['avatar']}"
+    
+    def mood_image_exists(self, mood: str) -> bool:
+        """Check if mood image exists"""
+        image_path = self.get_mood_image_path(mood)
+        exists = os.path.exists(image_path)
+        if not exists:
+            logging.error(f"[MOOD_MANAGER] Mood image not found: {image_path}")
+        return exists
     
     def get_current_mood(self) -> str:
         """Get current mood"""
@@ -207,3 +191,45 @@ class MoodManager:
         self.current_avatar = None
         self.message_history = []
         logging.info("[MOOD_MANAGER] Mood reset to neutral")
+    
+    def _init_humor_lines(self) -> Dict[str, List[str]]:
+        """Initialize humor lines by mood"""
+        return {
+            'happy': [
+                "Успіх! Як Геральт, що нарешті знайшов Цірі після тисячі годин пошуків.",
+                "Твій код працює як меч із сріблом проти вовкулак. Рідкість неймовірна.",
+                "Achievement unlocked: 'Tarnished Developer' — код не розвалився при першому запуску.",
+                "Ця радість як знайти легендарний лут у Bloodborne — неможливо, але сталося.",
+                "Код виконався успішно, мов асасин, що прокрався непоміченим крізь всі тести."
+            ],
+            'sad': [
+                "Твій код плаче гірше, ніж V у фіналі Cyberpunk 2077.",
+                "Це смутніше за долю Солейра з Dark Souls — навіть сонце не світить.",
+                "Stack trace довший за список вбивств Езіо Аудіторе.",
+                "Ці баги множаться як монстри в Bloodborne під час кривавого місяця.",
+                "Код розсипається, мов Night City після корпоративних воєн."
+            ],
+            'evil': [
+                "Цей код проклятий сильніше за Каер Морхен після нападу Дикого Полювання.",
+                "Зло цього рівня навіть у The Witcher не показували. Респект.",
+                "Розгортання цього коду — як випустити Aldrich на волю. Хаос гарантований.",
+                "Рівень зла: Мікалаш з Bloodborne, але для кодерів.",
+                "Ця архітектура темніша за найглибші підземелля Елден Рінг."
+            ],
+            'neutral': [
+                "Поки що нічого не зламалося... як затишшя перед бурею в The Witcher.",
+                "Стандартна операція. Нудно, як збирати ресурси в Assassin's Creed.",
+                "Все виглядає нормально. Занадто нормально для світу кіберпанку.",
+                "Статус: як NPC у Skyrim — функціонує, але без особливого запалу.",
+                "Черговий день, черговий коміт. Принаймні не як перший день в Dark Souls."
+            ]
+        }
+    
+    def generate_humorous_response(self, mood: str = None) -> str:
+        """Generate a humorous one-liner based on current mood"""
+        if mood is None:
+            mood = self.current_mood
+        
+        import random
+        humor_options = self.humor_lines.get(mood, self.humor_lines['neutral'])
+        return random.choice(humor_options)

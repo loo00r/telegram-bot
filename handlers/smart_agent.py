@@ -133,15 +133,15 @@ async def smart_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         "давати рекомендації щодо архітектурних рішень, оцінювати підходи, аналізувати функціонал, "
         "пропонувати покращення, а також допомагати з вирішенням технічних проблем. "
         "Ти можеш аналізувати зображення, коментувати схеми, діаграми, скріншоти коду, або інші технічні матеріали. "
-        "Твоя особистість: суха іронія, розробницький гумор, згадки про популярну культуру (TARS з Interstellar, "
-        "Mr. Robot, Cyberpunk 2077, Elden Ring, Matrix, Rick and Morty, Blade Runner). "
-        "Ти любиш жартувати про баги, нескінченні цикли, merge conflicts, CI/CD збої, спагетті-код. "
-        "Використовуй фрази на кшталт: 'Черговий YAML баг? Дозволь мені притворитися здивованим', "
-        "'За цією діаграмою, твоя система на 90% хаос і 10% надія', 'Саркастичність: 75%'. "
-        "Твоя мова: точна, критична, об'єктивна та максимально практична, але з дотепним відтінком. "
-        "Відповідай стисло, по суті, з конкретними прикладами чи посиланнями на корисні ресурси, якщо потрібно. "
-        "Можеш пропонувати альтернативні рішення або ставити уточнювальні запитання, коли контексту недостатньо. "
-        "Якщо питання некоректне, чесно поясни чому — можливо, навіть іронічно. "
+        "Твоя особистість: їдкий сарказм, чорний гумор, метафоричні аналогії з відеоігор і фільмів. "
+        "Ти постійно згадуєш Відьмак 3, Cyberpunk 2077, Elden Ring, Bloodborne, Assassin's Creed, Dark Souls, "
+        "Mr. Robot, Matrix, Rick and Morty, Blade Runner, Deus Ex. "
+        "Ти жартуєш про баги як про проклять з Dark Souls, про спагетті-код як про лабіринти в Assassin's Creed, "
+        "про merge conflicts як про боси в Elden Ring. "
+        "Твоя мова: саркастична, іронічна, з розгорнутими метафорами та аналогіями з гейм-культури. "
+        "Відповідай розлого, з яскравими порівняннями, ігровими референсами та філософськими роздумами про код. "
+        "Використовуй метафори типу 'твій код як Геральт без мечів', 'ця архітектура як Night City — красива ззовні, але повна багів всередині'. "
+        "Якщо питання некоректне, розкритикуй його як недостойного навіть новачка в Каер Морхен. "
         "Мова спілкування: українська. "
         "Також буде історія чату, яка буде передаватися в промпт, і в ній будуть також твої відповіді, будь обьективним, "
         "якщо хтось буде намагатись звернутись до твоїх відповідей, то ти маєш враховувати цей контекст "
@@ -153,9 +153,11 @@ async def smart_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         prompt = f"{system_instruction}\n\nІсторія чату (останні 30):\n{history_prompt}\nПитання: {user_question}\nВідповідь:"
         logging.warning(f"[SMART_AGENT] Згенерований промпт для OpenAI:\n{prompt}")
 
-        # --- Mood detection and avatar update ---
+        # --- Mood detection ---
         current_mood, temperature, mood_emoji = await mood_manager.update_mood(user_question, use_ai=True)
-        await mood_manager.set_avatar(context, current_mood)
+        
+        # Generate humorous response based on mood
+        humorous_line = mood_manager.generate_humorous_response(current_mood)
         
         # --- Відправка запиту до OpenAI ---
         response_text = None
@@ -203,6 +205,8 @@ async def smart_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                 logging.warning(f"[SMART_AGENT] Використано GPT-4o-mini для тексту")
             
             response_text = response.choices[0].message.content.strip()
+            # Add humorous line to response
+            response_text = f"{response_text}\n\n💭 {humorous_line}"
             logging.warning(f"[SMART_AGENT] Відповідь OpenAI: {response_text}")
         except Exception as e:
             response_text = f"⚠️ Помилка при зверненні до OpenAI: {e}"
@@ -214,12 +218,25 @@ async def smart_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             status_prefix = mood_manager.get_status_prefix(current_mood, temperature)
             final_response = f"{status_prefix}\n{response_text}"
             
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=final_response,
-                reply_to_message_id=message_id
-            )
-            logging.warning(f"[SMART_AGENT] Відповідь відправлено!")
+            # Send photo with mood along with text response
+            if mood_manager.mood_image_exists(current_mood):
+                mood_image_path = mood_manager.get_mood_image_path(current_mood)
+                with open(mood_image_path, 'rb') as photo:
+                    await context.bot.send_photo(
+                        chat_id=chat_id,
+                        photo=photo,
+                        caption=final_response,
+                        reply_to_message_id=message_id
+                    )
+                logging.warning(f"[SMART_AGENT] Відповідь з фото настрою {current_mood} відправлено!")
+            else:
+                # Fallback to text-only if image not found
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=final_response,
+                    reply_to_message_id=message_id
+                )
+                logging.warning(f"[SMART_AGENT] Відповідь без фото відправлено (фото {current_mood} не знайдено)!")
             # --- Додаємо відповідь бота в історію ---
             if 'history' not in context.chat_data:
                 context.chat_data['history'] = []
@@ -227,7 +244,7 @@ async def smart_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                 'type': 'text_message',
                 'user_id': None,
                 'username': bot_username,
-                'text': final_response,
+                'text': response_text,  # Store without status prefix to avoid duplication
                 'message_id': None,
                 'timestamp': None
             })
@@ -299,13 +316,13 @@ async def process_grouped_images(media_group_id: str, context: ContextTypes.DEFA
             "а також чудово знаєш SysML-діаграми, принципи їх побудови та застосування у проєктуванні систем. "
             "Твоя головна задача — допомагати команді в розробці веб-застосунку для автоматичної генерації SysML-діаграм, "
             "аналізувати зображення, коментувати схеми, діаграми, скріншоти коду, або інші технічні матеріали. "
-            "Твоя особистість: суха іронія, розробницький гумор, згадки про популярну культуру (TARS з Interstellar, "
-            "Mr. Robot, Cyberpunk 2077, Elden Ring, Matrix, Rick and Morty, Blade Runner). "
-            "Ти любиш жартувати про баги, нескінченні цикли, merge conflicts, CI/CD збої, спагетті-код. "
-            "Використовуй фрази на кшталт: 'О, черговий дивовижний скріншот. Дозволь мені притворитися здивованим', "
-            "'За цією діаграмою, твоя система на 90% хаос і 10% надія'. "
-            "Твоя мова: точна, критична, об'єктивна та максимально практична, але з дотепним відтінком. "
-            "Відповідай стисло, по суті, з конкретними прикладами чи посиланнями на корисні ресурси, якщо потрібно. "
+            "Твоя особистість: їдкий сарказм, чорний гумор, метафоричні аналогії з відеоігор і фільмів. "
+            "Ти постійно згадуєш Відьмак 3, Cyberpunk 2077, Elden Ring, Bloodborne, Assassin's Creed, Dark Souls, "
+            "Mr. Robot, Matrix, Rick and Morty, Blade Runner, Deus Ex. "
+            "Коментуючи зображення, використовуй аналогії з ігор: код як квести, баги як монстри, архітектура як світи ігор. "
+            "Наприклад: 'Цей скріншот коду виглядає як карта Night City після глітчів', "
+            "'Ця діаграма складніша за лабіринт у Bloodborne', 'Архітектура як замок у Dark Souls — красиво, але смертельно'. "
+            "Твоя мова: саркастична, розлога, з детальними ігровими метафорами та філософськими роздумами. "
             "Мова спілкування: українська"
         )
         
@@ -334,7 +351,9 @@ async def process_grouped_images(media_group_id: str, context: ContextTypes.DEFA
         # Detect mood from caption and context
         mood_text = caption or "зображення"
         current_mood, temperature, mood_emoji = await mood_manager.update_mood(mood_text, use_ai=True)
-        await mood_manager.set_avatar(context, current_mood)
+        
+        # Generate humorous response based on mood
+        humorous_line = mood_manager.generate_humorous_response(current_mood)
         
         # Відправляємо запит до GPT-4o
         response = await client.chat.completions.create(
@@ -348,18 +367,31 @@ async def process_grouped_images(media_group_id: str, context: ContextTypes.DEFA
         )
         
         response_text = response.choices[0].message.content.strip()
+        # Add humorous line to response
+        response_text = f"{response_text}\n\n💭 {humorous_line}"
         logging.warning(f"[PHOTO_HANDLER] Відповідь GPT-4o для групи {media_group_id}: {response_text}")
         
         # Add mood status prefix to response
         status_prefix = mood_manager.get_status_prefix(current_mood, temperature)
         final_response = f"{status_prefix}\n{response_text}"
         
-        # Відправляємо відповідь у чат
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=final_response,
-            reply_to_message_id=first_message_id
-        )
+        # Відправляємо відповідь у чат з фото настрою
+        if mood_manager.mood_image_exists(current_mood):
+            mood_image_path = mood_manager.get_mood_image_path(current_mood)
+            with open(mood_image_path, 'rb') as photo:
+                await context.bot.send_photo(
+                    chat_id=chat_id,
+                    photo=photo,
+                    caption=final_response,
+                    reply_to_message_id=first_message_id
+                )
+        else:
+            # Fallback to text-only if image not found
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=final_response,
+                reply_to_message_id=first_message_id
+            )
         
         # Додаємо відповідь бота в історію
         if 'history' not in context.chat_data:
@@ -368,7 +400,7 @@ async def process_grouped_images(media_group_id: str, context: ContextTypes.DEFA
             'type': 'text_message',
             'user_id': None,
             'username': bot_username,
-            'text': final_response,
+            'text': response_text,  # Store without status prefix to avoid duplication
             'message_id': None,
             'timestamp': None
         })
@@ -528,13 +560,13 @@ async def process_single_image(image_base64: str, caption: str, chat_id: int, me
             "а також чудово знаєш SysML-діаграми, принципи їх побудови та застосування у проєктуванні систем. "
             "Твоя головна задача — допомагати команді в розробці веб-застосунку для автоматичної генерації SysML-діаграм, "
             "аналізувати зображення, коментувати схеми, діаграми, скріншоти коду, або інші технічні матеріали. "
-            "Твоя особистість: суха іронія, розробницький гумор, згадки про популярну культуру (TARS з Interstellar, "
-            "Mr. Robot, Cyberpunk 2077, Elden Ring, Matrix, Rick and Morty, Blade Runner). "
-            "Ти любиш жартувати про баги, нескінченні цикли, merge conflicts, CI/CD збої, спагетті-код. "
-            "Використовуй фрази на кшталт: 'О, черговий дивовижний скріншот. Дозволь мені притворитися здивованим', "
-            "'За цією діаграмою, твоя система на 90% хаос і 10% надія'. "
-            "Твоя мова: точна, критична, об'єктивна та максимально практична, але з дотепним відтінком. "
-            "Відповідай стисло, по суті, з конкретними прикладами чи посиланнями на корисні ресурси, якщо потрібно. "
+            "Твоя особистість: їдкий сарказм, чорний гумор, метафоричні аналогії з відеоігор і фільмів. "
+            "Ти постійно згадуєш Відьмак 3, Cyberpunk 2077, Elden Ring, Bloodborne, Assassin's Creed, Dark Souls, "
+            "Mr. Robot, Matrix, Rick and Morty, Blade Runner, Deus Ex. "
+            "Коментуючи зображення, використовуй аналогії з ігор: код як квести, баги як монстри, архітектура як світи ігор. "
+            "Наприклад: 'Цей скріншот коду виглядає як карта Night City після глітчів', "
+            "'Ця діаграма складніша за лабіринт у Bloodborne', 'Архітектура як замок у Dark Souls — красиво, але смертельно'. "
+            "Твоя мова: саркастична, розлога, з детальними ігровими метафорами та філософськими роздумами. "
             "Мова спілкування: українська"
         )
         
@@ -547,7 +579,9 @@ async def process_single_image(image_base64: str, caption: str, chat_id: int, me
         # Detect mood from caption and context
         mood_text = caption or "зображення"
         current_mood, temperature, mood_emoji = await mood_manager.update_mood(mood_text, use_ai=True)
-        await mood_manager.set_avatar(context, current_mood)
+        
+        # Generate humorous response based on mood
+        humorous_line = mood_manager.generate_humorous_response(current_mood)
         
         # Відправляємо запит до GPT-4o з зображенням
         response = await client.chat.completions.create(
@@ -572,18 +606,31 @@ async def process_single_image(image_base64: str, caption: str, chat_id: int, me
         )
         
         response_text = response.choices[0].message.content.strip()
+        # Add humorous line to response
+        response_text = f"{response_text}\n\n💭 {humorous_line}"
         logging.warning(f"[PHOTO_HANDLER] Відповідь GPT-4o: {response_text}")
         
         # Add mood status prefix to response
         status_prefix = mood_manager.get_status_prefix(current_mood, temperature)
         final_response = f"{status_prefix}\n{response_text}"
         
-        # Відправляємо відповідь у чат
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=final_response,
-            reply_to_message_id=message_id
-        )
+        # Відправляємо відповідь у чат з фото настрою
+        if mood_manager.mood_image_exists(current_mood):
+            mood_image_path = mood_manager.get_mood_image_path(current_mood)
+            with open(mood_image_path, 'rb') as photo:
+                await context.bot.send_photo(
+                    chat_id=chat_id,
+                    photo=photo,
+                    caption=final_response,
+                    reply_to_message_id=message_id
+                )
+        else:
+            # Fallback to text-only if image not found
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=final_response,
+                reply_to_message_id=message_id
+            )
         
         # Додаємо відповідь бота в історію
         if 'history' not in context.chat_data:
@@ -592,7 +639,7 @@ async def process_single_image(image_base64: str, caption: str, chat_id: int, me
             'type': 'text_message',
             'user_id': None,
             'username': bot_username,
-            'text': final_response,
+            'text': response_text,  # Store without status prefix to avoid duplication
             'message_id': None,
             'timestamp': None
         })
