@@ -47,7 +47,6 @@ class MoodManager:
         self.current_avatar = None
         self.message_history = []
         self.avatar_cache = {}
-        self.humor_lines = self._init_humor_lines()
         
     def _analyze_keywords(self, text: str) -> Dict[str, int]:
         """Analyze text using keyword matching"""
@@ -192,44 +191,3 @@ class MoodManager:
         self.message_history = []
         logging.info("[MOOD_MANAGER] Mood reset to neutral")
     
-    def _init_humor_lines(self) -> Dict[str, List[str]]:
-        """Initialize humor lines by mood"""
-        return {
-            'happy': [
-                "Успіх! Як Геральт, що нарешті знайшов Цірі після тисячі годин пошуків.",
-                "Твій код працює як меч із сріблом проти вовкулак. Рідкість неймовірна.",
-                "Achievement unlocked: 'Tarnished Developer' — код не розвалився при першому запуску.",
-                "Ця радість як знайти легендарний лут у Bloodborne — неможливо, але сталося.",
-                "Код виконався успішно, мов асасин, що прокрався непоміченим крізь всі тести."
-            ],
-            'sad': [
-                "Твій код плаче гірше, ніж V у фіналі Cyberpunk 2077.",
-                "Це смутніше за долю Солейра з Dark Souls — навіть сонце не світить.",
-                "Stack trace довший за список вбивств Езіо Аудіторе.",
-                "Ці баги множаться як монстри в Bloodborne під час кривавого місяця.",
-                "Код розсипається, мов Night City після корпоративних воєн."
-            ],
-            'evil': [
-                "Цей код проклятий сильніше за Каер Морхен після нападу Дикого Полювання.",
-                "Зло цього рівня навіть у The Witcher не показували. Респект.",
-                "Розгортання цього коду — як випустити Aldrich на волю. Хаос гарантований.",
-                "Рівень зла: Мікалаш з Bloodborne, але для кодерів.",
-                "Ця архітектура темніша за найглибші підземелля Елден Рінг."
-            ],
-            'neutral': [
-                "Поки що нічого не зламалося... як затишшя перед бурею в The Witcher.",
-                "Стандартна операція. Нудно, як збирати ресурси в Assassin's Creed.",
-                "Все виглядає нормально. Занадто нормально для світу кіберпанку.",
-                "Статус: як NPC у Skyrim — функціонує, але без особливого запалу.",
-                "Черговий день, черговий коміт. Принаймні не як перший день в Dark Souls."
-            ]
-        }
-    
-    def generate_humorous_response(self, mood: str = None) -> str:
-        """Generate a humorous one-liner based on current mood"""
-        if mood is None:
-            mood = self.current_mood
-        
-        import random
-        humor_options = self.humor_lines.get(mood, self.humor_lines['neutral'])
-        return random.choice(humor_options)

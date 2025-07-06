@@ -124,3 +124,63 @@ Avoid long monologues or repeated explanations
 Focus on punchy, witty replies, not essays
 
 Allow a bit of dark or dev humor, just don’t overdo it
+
+### Completed Task: ✅
+## 🧠 Task: Remove or Refactor `_init_humor_lines()` — It Pollutes Responses
+
+### 🐞 Problem
+
+The function `_init_humor_lines()` in `mood_manager.py` returns hardcoded "humorous" one-liners based on mood (e.g., happy, sad, evil, neutral). These lines are being **randomly injected into responses**, often at the end — and they:
+
+- Feel **forced, cringy, or out of context**
+- **Break the flow** of otherwise clean responses
+- **Don’t relate** to the user’s question or conversation
+- Cause repetition and tonal inconsistency
+
+---
+
+### 🔥 Summary
+
+> This function is a source of low-quality filler. It makes the bot feel less intelligent and more like a meme generator.
+
+---
+
+### ✅ Tasks
+
+- Either **remove `_init_humor_lines()` entirely**  
+  **OR** refactor so these lines are **only used explicitly when relevant**, not appended blindly.
+
+- Ensure they **don’t appear at the end of every response** by default.
+
+- Make sure bot responses stay **concise, witty, and on-point** — humor should be natural, not template-based.
+
+---
+
+### 📂 Affected File(s)
+- `utils/mood_manager.py`
+- Possibly logic in `smart_agent.py` that injects these `humor_lines`
+
+### Completed Task: ✅
+## 🤖 Task: Unified TARS-Style System Prompt
+
+**COMPLETED:** Created unified system prompt with TARS-style personality.
+
+### 🎯 Implementation
+
+**New unified prompt in `config.py`:**
+- TARS-style personality with 95% sarcasm level
+- Maximum dark humor and irony (but not offensive)
+- Short, witty responses
+- Consistent personality across all functions (text, images, groups)
+
+**Changes made:**
+- `config.py`: Added `get_system_prompt()` function
+- `smart_agent.py`: All 3 scattered prompts replaced with unified one
+- Consistent TARS-like personality for all bot interactions
+
+**Personality traits:**
+- Sarcastic but helpful (like TARS from Interstellar)
+- Dark humor when appropriate
+- Robo-humor in TARS style
+- Informal but professional
+- Concise responses with maximum irony

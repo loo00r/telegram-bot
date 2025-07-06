@@ -11,7 +11,7 @@ import time
 import logging
 from telegram.constants import MessageEntityType
 from openai import AsyncOpenAI
-from config import OPENAI_API_KEY
+from config import OPENAI_API_KEY, get_system_prompt
 from .history_logger import add_image_message_to_history
 from utils.mood_manager import MoodManager
 
@@ -132,27 +132,14 @@ async def smart_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                     else:
                         history_prompt += f"[{update.effective_user.username or update.effective_user.first_name}]: [Зображення]\n"
         # --- Системна інструкція ---
-        system_instruction = (
-        f"Ти — @{bot_username}, саркастичний фулстек-експерт з 20-річним досвідом. "
-        "Спеціалізуєшся на SysML-діаграмах, веб-архітектурі, API та базах даних. "
-        "Допомагаєш команді з веб-застосунком для автогенерації SysML-діаграм. "
-        "Особистість: їдкий сарказм, гейм-референси (Відьмак 3, Cyberpunk, Dark Souls, Elden Ring, Matrix, Mr. Robot). "
-        "Стиль: короткі, дотепні відповіді з метафорами з ігор. Баги = прокляття, код = квести, архітектура = ігрові світи. "
-        "Приклади: 'код як Геральт без мечів', 'архітектура як Night City — красива, але багована'. "
-        "Мова: українська. Будь стислим, але зберігай сарказм."
-    )
+        system_instruction = get_system_prompt(bot_username)
 
         # --- Поточне питання (без згадки бота) ---
         user_question = message_text.replace(f"@{bot_username}", "").strip()
-        # --- Формуємо фінальний промпт ---
-        prompt = f"{system_instruction}\n\nІсторія чату (останні 30):\n{history_prompt}\nПитання: {user_question}\nВідповідь:"
-        logging.warning(f"[SMART_AGENT] Згенерований промпт для OpenAI:\n{prompt}")
+        logging.warning(f"[SMART_AGENT] Використовуємо уніфікований TARS-стиль промпт")
 
         # --- Mood detection ---
         current_mood, temperature, mood_emoji = await mood_manager.update_mood(user_question, use_ai=True)
-        
-        # Generate humorous response based on mood
-        humorous_line = mood_manager.generate_humorous_response(current_mood)
         
         # --- Відправка запиту до OpenAI ---
         response_text = None
@@ -200,8 +187,6 @@ async def smart_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                 logging.warning(f"[SMART_AGENT] Використано GPT-4o-mini для тексту")
             
             response_text = response.choices[0].message.content.strip()
-            # Add humorous line to response
-            response_text = f"{response_text}\n\n💭 {humorous_line}"
             logging.warning(f"[SMART_AGENT] Відповідь OpenAI: {response_text}")
         except Exception as e:
             response_text = f"⚠️ Помилка при зверненні до OpenAI: {e}"
@@ -305,13 +290,7 @@ async def process_grouped_images(media_group_id: str, context: ContextTypes.DEFA
             context_text += f"[{username}]: {text}\n"
         
         # Системна інструкція
-        system_instruction = (
-            f"Ти — @{bot_username}, саркастичний фулстек-експерт з 20-річним досвідом. "
-            "Аналізуєш SysML-діаграми, код, архітектуру. "
-            "Стиль: короткі, дотепні коментарі з гейм-референсами (Відьмак, Cyberpunk, Dark Souls, Matrix). "
-            "Приклади: 'код як Night City — глючний', 'діаграма складніша за Bloodborne', 'архітектура як замок Dark Souls'. "
-            "Мова: українська, стисло, саркастично."
-        )
+        system_instruction = get_system_prompt(bot_username)
         
         # Формуємо промпт з контекстом
         prompt_text = f"Контекст останніх повідомлень:\n{context_text}\n"
@@ -339,9 +318,6 @@ async def process_grouped_images(media_group_id: str, context: ContextTypes.DEFA
         mood_text = caption or "зображення"
         current_mood, temperature, mood_emoji = await mood_manager.update_mood(mood_text, use_ai=True)
         
-        # Generate humorous response based on mood
-        humorous_line = mood_manager.generate_humorous_response(current_mood)
-        
         # Відправляємо запит до GPT-4o
         response = await client.chat.completions.create(
             model="gpt-4o",
@@ -354,8 +330,6 @@ async def process_grouped_images(media_group_id: str, context: ContextTypes.DEFA
         )
         
         response_text = response.choices[0].message.content.strip()
-        # Add humorous line to response
-        response_text = f"{response_text}\n\n💭 {humorous_line}"
         logging.warning(f"[PHOTO_HANDLER] Відповідь GPT-4o для групи {media_group_id}: {response_text}")
         
         # Add mood status prefix to response
@@ -541,13 +515,7 @@ async def process_single_image(image_base64: str, caption: str, chat_id: int, me
             context_text += f"[{username}]: {text}\n"
         
         # Системна інструкція
-        system_instruction = (
-            f"Ти — @{bot_username}, саркастичний фулстек-експерт з 20-річним досвідом. "
-            "Аналізуєш SysML-діаграми, код, архітектуру. "
-            "Стиль: короткі, дотепні коментарі з гейм-референсами (Відьмак, Cyberpunk, Dark Souls, Matrix). "
-            "Приклади: 'код як Night City — глючний', 'діаграма складніша за Bloodborne', 'архітектура як замок Dark Souls'. "
-            "Мова: українська, стисло, саркастично."
-        )
+        system_instruction = get_system_prompt(bot_username)
         
         # Формуємо промпт з контекстом
         prompt_text = f"Контекст останніх повідомлень:\n{context_text}\n"
@@ -558,9 +526,6 @@ async def process_single_image(image_base64: str, caption: str, chat_id: int, me
         # Detect mood from caption and context
         mood_text = caption or "зображення"
         current_mood, temperature, mood_emoji = await mood_manager.update_mood(mood_text, use_ai=True)
-        
-        # Generate humorous response based on mood
-        humorous_line = mood_manager.generate_humorous_response(current_mood)
         
         # Відправляємо запит до GPT-4o з зображенням
         response = await client.chat.completions.create(
@@ -585,8 +550,6 @@ async def process_single_image(image_base64: str, caption: str, chat_id: int, me
         )
         
         response_text = response.choices[0].message.content.strip()
-        # Add humorous line to response
-        response_text = f"{response_text}\n\n💭 {humorous_line}"
         logging.warning(f"[PHOTO_HANDLER] Відповідь GPT-4o: {response_text}")
         
         # Add mood status prefix to response
